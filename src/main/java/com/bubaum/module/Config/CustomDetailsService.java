@@ -21,7 +21,7 @@ public class CustomDetailsService implements UserDetailsService{
     private final PasswordEncoder passwordEncoder;
     
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    public Users loadUserByUsername(String username) throws UsernameNotFoundException {
     
         return userRepository.findById(username)
         .map(this::createUserDetails)
@@ -29,12 +29,13 @@ public class CustomDetailsService implements UserDetailsService{
 
     }
     
-    private UserDetails createUserDetails(Users user){
+    private Users createUserDetails(Users user){
    
-        return User.builder()
-                .username(user.getUsername())
-                .password(passwordEncoder.encode(user.getPassword()))
-                .roles(user.getRoles().toArray(new String[0]))
+        return Users.builder()
+                .idx(user.getIdx())
+                .id(user.getId())
+                .pwd(passwordEncoder.encode(user.getPassword()))
+                .roles(user.getRoles())
                 .build();
 
 

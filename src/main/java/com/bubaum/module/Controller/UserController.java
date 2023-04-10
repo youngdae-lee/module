@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bubaum.module.Config.JwtFilter;
 import com.bubaum.module.Config.JwtProvider;
 import com.bubaum.module.Dto.LoginDto;
+import com.bubaum.module.Dto.UserDto;
 import com.bubaum.module.Model.Message;
 import com.bubaum.module.Model.Token;
 import com.bubaum.module.Model.Users;
@@ -88,10 +89,14 @@ public class UserController {
     
     
     @PostMapping("/test")
-    public String test(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
+    public String test(Authentication authentication) throws Exception {
+    
+        Users user = (Users) authentication.getPrincipal();
+        System.out.println(user);
         System.out.println(user.getUsername());
 
+        // UserDto userDto =userService.userInfo(user.getUsername());
+        // System.out.println(userDto);
         return "test";
     }
 
@@ -99,7 +104,6 @@ public class UserController {
     @ApiOperation(value = "바움 모듈 로그인", notes = "바움 모듈에 로그인을 한다.")
     @ApiResponses({
         @ApiResponse(code = 200, message = "성공입니다.")
-        , @ApiResponse(code = 403, message = "권한이 없습니다.")
         , @ApiResponse(code = 500, message = "서버에 문제가 발생하였습니다.")
     })
   
@@ -114,7 +118,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(msg);
     }
 
-
+    
 
     
 }

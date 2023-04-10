@@ -1,9 +1,11 @@
 package com.bubaum.module.Config;
 
 import java.security.Key;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -26,8 +28,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import com.bubaum.module.Mapper.UserMapper;
 import com.bubaum.module.Model.Message;
 import com.bubaum.module.Model.Token;
+import com.bubaum.module.Model.Users;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -47,7 +51,8 @@ public class JwtProvider {
     private final Key key;
     @Autowired
     private RedisTemplate<String,Object> redisTemplate;
-    
+    @Autowired
+    private UserMapper userMapper;
     public JwtProvider(@Value("${jwt.secretKey}") String secretKey) {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         this.key = Keys.hmacShaKeyFor(keyBytes);
@@ -56,16 +61,17 @@ public class JwtProvider {
     // 유저 정보를 가지고 AccessToken, RefreshToken 을 생성하는 메서드
     public Token generateToken(Authentication authentication) {
         // 권한 가져오기
+        Users user = (Users)authentication.getPrincipal();
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
  
         long now = (new Date()).getTime();
         // Access Token 생성
-        Date accessTokenExpiresIn = new Date(now + 60000);
+        Date accessTokenExpiresIn = new Date(now + 180);
      
         String accessToken = Jwts.builder()
-                .setSubject(authentication.getName())
+                .setSubject(user.getId())
                 .claim("auth", authorities)
                 .setExpiration(accessTokenExpiresIn)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -76,7 +82,7 @@ public class JwtProvider {
                 .setExpiration(new Date(now + 86400000))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
-        redisTemplate.opsForValue().set(authentication.getName(), refreshToken, 86300000,TimeUnit.MILLISECONDS);
+        redisTemplate.opsForValue().set(user.getId(), refreshToken, 86300000,TimeUnit.MILLISECONDS);
 
         return Token.builder()
                 .grantType("Bearer")
@@ -99,9 +105,15 @@ public class JwtProvider {
                 Arrays.stream(claims.get("auth").toString().split(","))
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
- 
-        // UserDetails 객체를 만들어서 Authentication 리턴
-        UserDetails principal = new User(claims.getSubject(), "", authorities);
+        
+        List<String> roles = new ArrayList<String>();
+        for(GrantedAuthority auth:authorities){
+            roles.add(auth.getAuthority());
+        }
+        // Users 객체를 만들어서 Authentication 리턴
+        Users principal =userMapper.userInfo(claims.getSubject());
+        principal.setRoles(roles);        
+        //  UserDetails principal = new User(claims.getSubject(), "", authorities);
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
  
@@ -157,7 +169,7 @@ public class JwtProvider {
             .map(GrantedAuthority::getAuthority)
             .collect(Collectors.joining(","));
             long now = (new Date()).getTime();
-            Date accessTokenExpiresIn = new Date(now + 60000);
+            Date accessTokenExpiresIn = new Date(now + 180);
     
             String accesstoken = Jwts.builder()
                     .setSubject(authentication.getName())
